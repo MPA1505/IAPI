@@ -1,0 +1,21 @@
+kubectl create namespace kafka
+
+minikube addons enable metrics-server
+
+kubectl apply -f Kafka/
+
+
+To expose service to outside:
+kubectl port-forward -n kafka svc/kafka 9092:9092
+
+For testing, create topic and producer:
+kubectl exec -it <name-of-kafka-pod> -n kafka -- bash
+
+kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic test-topic
+kafka-topics.sh --list --bootstrap-server localhost:9092
+kafka-console-producer.sh --broker-list localhost:9092 --topic test-topic
+
+For testing, create consumer:
+kubectl exec -it <name-of-kafka-pod> -n kafka -- bash
+
+kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic test-topic --from-beginning
