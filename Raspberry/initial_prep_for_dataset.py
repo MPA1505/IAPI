@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 # Read the CSV file in chunks due to its large size
 chunk_size = 1200  # Number of rows per file
 input_file = './Raspberry/datasets/Industrial_Robotic_Arm_IMU_Data_(CASPER_1_&_2)/right_arm.csv'
-output_folder = './Raspberry/datasets/adatasets_20hz_1_robot_1_minute'
+output_folder = './Raspberry/datasets/datasets_20hz_1_robot_1_minute'
 
 logging.info('Starting the CSV chunk processing script.')
 logging.debug(f'Input file: {input_file}')
@@ -31,6 +31,8 @@ header = [
 
 # Process the CSV in chunks
 chunk_counter = 1
+global_id = 1  # Start the global ID counter
+
 try:
     for chunk in pd.read_csv(input_file, header=0, names=header, chunksize=chunk_size):
         logging.info(f'Processing chunk {chunk_counter}')
@@ -39,6 +41,9 @@ try:
         for column in header:
             logging.debug(f'Processing column: {column}')
             chunk[column] = chunk[column].apply(lambda x: eval(x) if isinstance(x, str) and x.startswith('[') else x)
+        
+        # Add an ID column as the first column
+        chunk.insert(0, 'ID', global_id)
         
         # Save each chunk to a new CSV file
         output_file = os.path.join(output_folder, f'dataset_part_{chunk_counter}.csv')
