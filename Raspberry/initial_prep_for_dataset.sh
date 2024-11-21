@@ -8,55 +8,32 @@ trap 'echo "Error occurred at line $LINENO"; exit 1;' ERR
 INPUT_FILE="./datasets/right_arm.csv"
 OUTPUT_FOLDER="./datasets/shell_datasets_20hz_1_robot_1_minute"
 CHUNK_SIZE=1200  # Number of rows per chunk
-HEADER="ID,Timestamp,Actual Joint Positions,Actual Joint Velocities,Actual Joint Currents,Actual Cartesian Coordinates,Actual Tool Speed,Generalized Forces,Temperature of Each Joint,Execution Time,Safety Status,Tool Acceleration,Norm of Cartesian Linear Momentum,Robot Current,Joint Voltages,Elbow Position,Elbow Velocity,Tool Current,Tool Temperature,TCP Force,Anomaly State"
+SHELL_SCRIPTS_FOLDER="./shell_scripts"  # Path to the folder with shell scripts
 
 # Debugging logs
-echo "Starting the script."
+echo "Starting the main script."
 echo "Input file: $INPUT_FILE"
 echo "Output folder: $OUTPUT_FOLDER"
 echo "Chunk size: $CHUNK_SIZE"
+echo "Using shell scripts from: $SHELL_SCRIPTS_FOLDER"
 
-# Ensure output folder exists
-if [ ! -d "$OUTPUT_FOLDER" ]; then
-  echo "Output folder does not exist. Creating it..."
-  mkdir -p "$OUTPUT_FOLDER"
-  echo "Output folder created."
-fi
-
-# Check if input file exists
-if [ ! -f "$INPUT_FILE" ]; then
-  echo "Error: Input file does not exist at $INPUT_FILE."
-  exit 1
-fi
-
-# Split the input file into chunks using numeric naming
-echo "Splitting the input file into chunks..."
-tail -n +2 "$INPUT_FILE" | split -l $CHUNK_SIZE --numeric-suffixes=1 --suffix-length=4 - "$OUTPUT_FOLDER/dataset_part_"
-echo "File splitting completed."
-
-# Process each chunk
-echo "Processing chunks..."
-for chunk in "$OUTPUT_FOLDER"/dataset_part_*.csv; do
-  echo "Processing chunk: $chunk"
-  TEMP_FILE="${chunk}.tmp"
-  
-  # Add header to the temporary file
-  echo "$HEADER" > "$TEMP_FILE"
-  echo "Header added to $TEMP_FILE."
-
-  # Prepend static ID to each row
-  awk '{
-      print 1 "," $0  # Prepend the static ID value "1" to each row
-    }' "$chunk" >> "$TEMP_FILE"
-  echo "Static ID column added to $TEMP_FILE."
-
-  # Replace the original file with the new one
-  mv "$TEMP_FILE" "$chunk"
-  echo "Chunk processed and saved: $chunk"
-
-  # Debugging log for file completion
-  echo "Finished processing file: $chunk"
+# Make all scripts in SHELL_SCRIPTS_FOLDER executable
+echo "Ensuring all shell scripts in $SHELL_SCRIPTS_FOLDER are executable."
+for script in "$SHELL_SCRIPTS_FOLDER"/*.sh; do
+  if [ -f "$script" ]; then
+    chmod +x "$script"
+    echo "Made executable: $script"
+  fi
 done
 
+# Step 1: Create the output folder
+bash "$SHELL_SCRIPTS_FOLDER/create_output_folder.sh" "$OUTPUT_FOLDER"
+
+# Step 2: Split the input file into chunks
+bash "$SHELL_SCRIPTS_FOLDER/split_file.sh" "$INPUT_FILE" "$OUTPUT_FOLDER" "$CHUNK_SIZE"
+
+# Step 3: Process each chunk
+bash "$SHELL_SCRIPTS_FOLDER/process_chunks.sh" "$OUTPUT_FOLDER"
+
 echo "All chunks processed successfully."
-echo "CSV chunk processing completed."
+echo "Script execution completed."
