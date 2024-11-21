@@ -4,17 +4,29 @@ HEADER="ID,Timestamp,Actual Joint Positions,Actual Joint Velocities,Actual Joint
 
 echo "Processing chunks in folder: $OUTPUT_FOLDER"
 
+# Initialize a counter
+file_counter=0
+
 for chunk in "$OUTPUT_FOLDER"/dataset_part_*.csv; do
-  echo "Processing chunk: $chunk"
   TEMP_FILE="${chunk}.tmp"
   
+  # Add the header to the temporary file
   echo "$HEADER" > "$TEMP_FILE"
-  echo "Header added to $TEMP_FILE."
 
+  # Prepend static ID and append to the temporary file
   awk '{ print 1 "," $0 }' "$chunk" >> "$TEMP_FILE"
-  echo "Static ID column added to $TEMP_FILE."
 
+  # Replace the original file with the updated one
   mv "$TEMP_FILE" "$chunk"
-  echo "Chunk processed and saved: $chunk"
-  echo "Finished processing file: $chunk"
+
+  # Increment the counter
+  ((file_counter++))
+
+  # Print debugging info every 100 files
+  if (( file_counter % 100 == 0 )); then
+    echo "Processed $file_counter files so far..."
+  fi
 done
+
+# Final message
+echo "Finished processing all $file_counter files in folder: $OUTPUT_FOLDER."
