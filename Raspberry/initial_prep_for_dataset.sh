@@ -29,9 +29,9 @@ if [ ! -f "$INPUT_FILE" ]; then
   exit 1
 fi
 
-# Split the input file into chunks
+# Split the input file into chunks using numeric naming
 echo "Splitting the input file into chunks..."
-tail -n +2 "$INPUT_FILE" | split -l $CHUNK_SIZE - "$OUTPUT_FOLDER/dataset_part_" --additional-suffix=.csv
+tail -n +2 "$INPUT_FILE" | split -l $CHUNK_SIZE --numeric-suffixes=1 --suffix-length=4 - "$OUTPUT_FOLDER/dataset_part_"
 echo "File splitting completed."
 
 # Process each chunk
@@ -53,6 +53,9 @@ for chunk in "$OUTPUT_FOLDER"/dataset_part_*.csv; do
   # Replace the original file with the new one
   mv "$TEMP_FILE" "$chunk"
   echo "Chunk processed and saved: $chunk"
+
+  # Debugging log for file completion
+  echo "Finished processing file: $chunk"
 done
 
 echo "All chunks processed successfully."
