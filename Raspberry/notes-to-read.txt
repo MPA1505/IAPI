@@ -1,0 +1,2 @@
+Go to -- cd ~/iapi/IAPI/Raspberry
+pip install -r requirements.txt --break-system-packages
