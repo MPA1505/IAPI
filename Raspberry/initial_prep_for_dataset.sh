@@ -5,7 +5,7 @@ set -euo pipefail
 trap 'echo "Error occurred at line $LINENO"; exit 1;' ERR
 
 # Input file and output folder
-INPUT_FILE="./Raspberry/datasets/Industrial_Robotic_Arm_IMU_Data_(CASPER_1_&_2)/right_arm.csv"
+INPUT_FILE="./Raspberry/datasets/right_arm.csv"
 OUTPUT_FOLDER="./Raspberry/datasets/shell_datasets_20hz_1_robot_1_minute"
 CHUNK_SIZE=1200  # Number of rows per chunk
 HEADER="ID,Timestamp,Actual Joint Positions,Actual Joint Velocities,Actual Joint Currents,Actual Cartesian Coordinates,Actual Tool Speed,Generalized Forces,Temperature of Each Joint,Execution Time,Safety Status,Tool Acceleration,Norm of Cartesian Linear Momentum,Robot Current,Joint Voltages,Elbow Position,Elbow Velocity,Tool Current,Tool Temperature,TCP Force,Anomaly State"
