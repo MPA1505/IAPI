@@ -1,0 +1,5 @@
+kubectl create namespace keycloak
+kubectl create -f postgres.yaml
+kubectl create -f keycloak.yaml
+
+minikube service keycloak -n keycloak
