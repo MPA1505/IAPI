@@ -7,8 +7,8 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 
 # Read the CSV file in chunks due to its large size
 chunk_size = 1200  # Number of rows per file
-input_file = './datasets/right_arm.csv'
-output_folder = './datasets/datasets_20hz_1_robot_1_minute'
+input_file = 'Raspberry\datasets\\right_arm.csv'
+output_folder = 'Raspberry\datasets\\python_datasets_20hz_1_robot_1_minute'
 
 logging.info('Starting the CSV chunk processing script.')
 logging.debug(f'Input file: {input_file}')

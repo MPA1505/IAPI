@@ -9,14 +9,24 @@ public class Main {
     public static void main(String[] args) {
         // Check if the required arguments are provided
         if (args.length < 2) {
-            System.err.println("Usage: java -jar javaproject-1.jar <inputFile> <outputFolder> [chunkSize]");
-            System.exit(1);
+            System.err.println("Not enough arguments provided. Defaulting to:");
+            System.err.println("Input file: Raspberry\\datasets\\right_arm.csv");
+            System.err.println("Output folder: Raspberry\\datasets\\datasets_20hz_1_robot_1_minute");
+            System.err.println("Optional chunkSize: 1200");
+            
+            // Default arguments
+            args = new String[] { "Raspberry\\datasets\\right_arm.csv", "Raspberry\\datasets\\datasets_20hz_1_robot_1_minute" };
+        } else if (args.length < 3) {
+            System.err.println("Optional chunkSize not provided. Proceeding with default values for input and output.");
         }
-
+        
         // Read paths from command-line arguments
         String inputFile = args[0];
         String outputFolder = args[1];
-        int chunkSize = 1200;
+        
+        // Optional: handle chunkSize if provided
+        int chunkSize = args.length >= 3 ? Integer.parseInt(args[2]) : 1200; // Example default value
+        
         int numThreads = Runtime.getRuntime().availableProcessors(); // Use all available CPU cores
 
         // Allow optional chunk size argument
