@@ -30,3 +30,4 @@ replay_pid*
 
 # Do not ignore
 !javaproject-1.jar
+!merge_data-1.0-SNAPSHOT.jar
