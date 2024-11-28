@@ -10,12 +10,12 @@ public class Main {
         // Check if the required arguments are provided
         if (args.length < 2) {
             System.err.println("Not enough arguments provided. Defaulting to:");
-            System.err.println("Input file: Raspberry\\datasets\\right_arm.csv");
-            System.err.println("Output folder: Raspberry\\datasets\\datasets_20hz_1_robot_1_minute");
+            System.err.println("Input file: .\\datasets\\right_arm.csv");
+            System.err.println("Output folder: .\\datasets\\datasets_20hz_1_robot_1_minute");
             System.err.println("Optional chunkSize: 1200");
             
             // Default arguments
-            args = new String[] { "Raspberry\\datasets\\right_arm.csv", "Raspberry\\datasets\\datasets_20hz_1_robot_1_minute" };
+            args = new String[] { ".\\datasets\\right_arm.csv", ".\\datasets\\datasets_20hz_1_robot_1_minute" };
         } else if (args.length < 3) {
             System.err.println("Optional chunkSize not provided. Proceeding with default values for input and output.");
         }
