@@ -6,7 +6,9 @@ import com.opencsv.exceptions.CsvValidationException;
 
 import java.io.*;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -41,8 +43,15 @@ public class FileMerger {
 
         AtomicBoolean newFilesProcessed = new AtomicBoolean(false);
 
-        // Process files in parallel
-        Stream.of(files).parallel().forEach(file -> {
+        // Sort files by the smallest number in their names
+        Arrays.sort(files, (f1, f2) -> {
+            int num1 = extractNumber(f1.getName());
+            int num2 = extractNumber(f2.getName());
+            return Integer.compare(num1, num2);
+        });
+
+        // Process files in order
+        Stream.of(files).forEach(file -> {
             if (!processedFiles.contains(file.getName())) {
                 System.out.println("Processing file: " + file.getName());
                 try {
@@ -59,41 +68,71 @@ public class FileMerger {
         return newFilesProcessed.get();
     }
 
+    private int extractNumber(String fileName) {
+        // Regex to find the first number in the file name
+        String num = fileName.replaceAll("\\D+", ""); // Remove all non-digit characters
+        try {
+            return Integer.parseInt(num); // Parse the number
+        } catch (NumberFormatException e) {
+            return Integer.MAX_VALUE; // Return a large value if no number is found
+        }
+    }
+
     private synchronized void processFile(File file) throws IOException, CsvValidationException {
         File currentOutputFile = getOrCreateOutputFile();
-        try (CSVReader csvReader = new CSVReader(new BufferedReader(new FileReader(file)));
-             CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(currentOutputFile, true)))) {
+        List<String[]> buffer = new ArrayList<>(); // Buffer for batch writing
 
+        try (CSVReader csvReader = new CSVReader(new BufferedReader(new FileReader(file)))) {
             String[] header = csvReader.readNext();
             if (header == null) {
                 throw new IOException("Empty file: " + file.getName());
             }
 
-            // Write header only if file is new
-            if (currentFileSize.get() == 0) {
-                csvWriter.writeNext(header);
-                currentFileSize.addAndGet(calculateRowSize(header));
+            // Write header only if the file is new
+            synchronized (this) {
+                if (currentFileSize.get() == 0) {
+                    List<String[]> headerAsList = new ArrayList<>();
+                    headerAsList.add(header);
+                    writeBatchToFile(currentOutputFile, headerAsList); // Write header to the new file
+                    currentFileSize.addAndGet(calculateRowSize(header));
+                }
             }
 
             String[] row;
             while ((row = csvReader.readNext()) != null) {
+                buffer.add(row);
                 long rowSize = calculateRowSize(row);
 
                 // Check if the current file size exceeds the limit
                 if (currentFileSize.addAndGet(rowSize) > maxFileSizeBytes) {
-                    System.out.println("File size limit reached. Creating new file...");
-                    currentOutputFile = getNextOutputFile();
-                    try (CSVWriter newCsvWriter = new CSVWriter(new BufferedWriter(new FileWriter(currentOutputFile)))) {
-                        newCsvWriter.writeNext(header); // Write header to new file
-                        currentFileSize.set(calculateRowSize(header) + rowSize); // Reset size
-                        newCsvWriter.writeNext(row); // Write current row to new file
+                    synchronized (this) {
+                        // Flush buffer to the current file and create a new one
+                        writeBatchToFile(currentOutputFile, buffer);
+                        buffer.clear(); // Clear buffer for next batch
+                        currentOutputFile = getNextOutputFile();
+                        List<String[]> headerAsList = new ArrayList<>();
+                        headerAsList.add(header);
+                        writeBatchToFile(currentOutputFile, headerAsList); // Write header to the new file
+                        currentFileSize.set(calculateRowSize(header) + rowSize);
                     }
-                } else {
-                    csvWriter.writeNext(row); // Write row to current file
+                }
+            }
+
+            // Write remaining rows in the buffer
+            if (!buffer.isEmpty()) {
+                synchronized (this) {
+                    writeBatchToFile(currentOutputFile, buffer);
                 }
             }
         }
     }
+
+    private void writeBatchToFile(File file, List<String[]> rows) throws IOException {
+        try (CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(file, true)))) {
+            csvWriter.writeAll(rows); // Batch write
+        }
+    }
+
 
     private synchronized File getOrCreateOutputFile() throws IOException {
         File file = Paths.get(outputFile.replace(".csv", "_" + fileIndex + ".csv")).toFile();
