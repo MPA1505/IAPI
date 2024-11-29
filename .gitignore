@@ -5,6 +5,8 @@
 *.class
 \target
 \.idea
+*.parquet
+*.crc
 
 # Log file
 *.log
