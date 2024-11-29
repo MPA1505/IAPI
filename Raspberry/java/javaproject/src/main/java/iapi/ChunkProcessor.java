@@ -32,6 +32,14 @@ public class ChunkProcessor {
                     throw new IOException("Empty CSV file.");
                 }
 
+                // Rename header if it exists
+                for (int i = 0; i < header.length; i++) {
+                    if ("Norm of Cartesion Linear Momentum".equals(header[i])) {
+                        header[i] = "Norm of Cartesian Linear Momentum";
+                        break; // Exit loop after replacing the header
+                    }
+                }
+
                 // Add "ID" to the header
                 String[] modifiedHeader = CSVUtils.addColumnToHeader(header, "ID");
 

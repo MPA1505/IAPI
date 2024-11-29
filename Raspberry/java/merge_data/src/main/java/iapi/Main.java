@@ -10,13 +10,13 @@ public class Main {
         // Check if the required arguments are provided
         if (args.length < 2) {
             System.err.println("Not enough arguments provided. Defaulting to:");
-            System.err.println("Input folder: .\\datasets\\new_dataset");
-            System.err.println("Output file: .\\datasets\\merged_dataset.csv");
+            System.err.println("Input folder: .\\datasets\\datasets_20hz_1_robot_1_minute");
+            System.err.println("Output file: .\\datasets\\merged_datasets\\merged_dataset.csv");
 
             // Default arguments
             args = new String[]{
-                    ".\\datasets\\new_dataset",
-                    ".\\datasets\\merged_dataset.csv"
+                    ".\\datasets\\datasets_20hz_1_robot_1_minute",
+                    ".\\datasets\\merged_datasets\\merged_dataset.csv"
             };
         }
 
