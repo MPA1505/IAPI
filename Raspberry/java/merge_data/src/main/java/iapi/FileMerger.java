@@ -2,6 +2,7 @@ package iapi;
 
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
+import com.opencsv.exceptions.CsvMalformedLineException;
 import com.opencsv.exceptions.CsvValidationException;
 
 import java.io.*;
@@ -60,7 +61,7 @@ public class FileMerger {
                     newFilesProcessed.set(true);
                 } catch (Exception e) {
                     System.err.println("Error processing file: " + file.getName());
-                    e.printStackTrace();
+                    System.err.println("Reason: " + e.getMessage());
                 }
             }
         });
@@ -89,7 +90,9 @@ public class FileMerger {
                 throw new IOException("Empty file: " + file.getName());
             }
 
-            int expectedColumns = 0;
+            // Determine the expected number of columns from the header
+            int expectedColumns = header.length;
+
             // Write header only if the file is new
             synchronized (this) {
                 if (currentFileSize.get() == 0) {
@@ -97,18 +100,20 @@ public class FileMerger {
                     headerAsList.add(header);
                     writeBatchToFile(currentOutputFile, headerAsList); // Write header to the new file
                     currentFileSize.addAndGet(calculateRowSize(header));
-                    expectedColumns = headerAsList.size();
                 }
             }
 
             String[] row;
-            while ((row = csvReader.readNext()) != null) {
+            while (true) {
                 try {
-                    // Validate the row (example: ensure non-null and has expected columns)
+                    row = csvReader.readNext();
+                    if (row == null) break;
+
+                    // Validate the row
                     if (isValidRow(row, expectedColumns)) {
                         buffer.add(row);
                     } else {
-                        throw new CsvValidationException("Row is incomplete or malformed.");
+                        skippedRows++;
                     }
 
                     long rowSize = calculateRowSize(row);
@@ -126,10 +131,9 @@ public class FileMerger {
                             currentFileSize.set(calculateRowSize(header) + rowSize);
                         }
                     }
-                } catch (CsvValidationException e) {
+                } catch (CsvMalformedLineException e) {
                     skippedRows++;
-                    System.err.println("Skipped malformed row: " + Arrays.toString(row));
-                    System.err.println("Reason: " + e.getMessage());
+                    System.err.println("Skipped malformed row: " + e.getMessage());
                 }
             }
 
@@ -140,16 +144,19 @@ public class FileMerger {
                 }
             }
 
-            System.out.println("File processed: " + file.getName());
-            System.out.println("Skipped rows: " + skippedRows);
+            if (skippedRows > 0) {
+                System.out.println("Skipped rows: " + skippedRows);
+            }
+        } catch (CsvMalformedLineException e) {
+            System.err.println("Error processing file: " + file.getName());
+            System.err.println("Reason: " + e.getMessage());
         }
     }
 
     private boolean isValidRow(String[] row, int expectedColumns) {
-        // Example validation: Check if the row has the expected number of columns
-        return row.length == expectedColumns && Arrays.stream(row).noneMatch(String::isEmpty);
+        // Validate the row by checking the number of columns and ensuring no field is null or empty
+        return row.length == expectedColumns && Arrays.stream(row).allMatch(field -> field != null && !field.trim().isEmpty());
     }
-
 
     private void writeBatchToFile(File file, List<String[]> rows) throws IOException {
         try (CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(file, true)))) {
@@ -169,8 +176,11 @@ public class FileMerger {
 
     private synchronized File getNextOutputFile() throws IOException {
         fileIndex++;
-        return getOrCreateOutputFile();
+        File newFile = getOrCreateOutputFile();
+        System.out.println("Switching to new output file: " + newFile.getAbsolutePath());
+        return newFile;
     }
+
 
     private long calculateRowSize(String[] row) {
         return Arrays.stream(row).mapToInt(String::length).sum() + row.length + 1; // Approximation
