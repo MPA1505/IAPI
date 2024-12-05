@@ -1,6 +1,6 @@
 #!/bin/bash
 
-INPUT_DIR="./datasets/merged_datasets/merged_dataset.csv"
+INPUT_DIR="./datasets/merged_datasets"
 OUTPUT_DIR="./datasets/parquet_files"
 
 echo "Input folder: $INPUT_DIR"
