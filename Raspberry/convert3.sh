@@ -1,1 +1,9 @@
+#!/bin/bash
 
+INPUT_DIR="./datasets/merged_datasets/merged_dataset.csv"
+OUTPUT_DIR="./datasets/parquet_files"
+
+echo "Input folder: $INPUT_DIR"
+echo "Output folder: $OUTPUT_DIR"
+
+java -jar convert_data_fixed.jar "$INPUT_DIR" "$OUTPUT_DIR"
