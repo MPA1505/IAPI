@@ -4,6 +4,9 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.hadoop.conf.Configuration;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 
 public class Main {
@@ -25,6 +28,16 @@ public class Main {
 
         // Create Hadoop configuration once
         Configuration conf = HadoopConfig.getHadoopConfiguration();
+
+        // Ensure the output directory exists
+        try {
+            Files.createDirectories(Paths.get(outputFolder));
+            System.out.println("Output folder verified/created: " + outputFolder);
+        } catch (IOException e) {
+            System.err.println("Failed to create output folder: " + outputFolder);
+            e.printStackTrace();
+            return;
+        }
 
         System.out.println("Monitoring folder for new CSV files...");
         System.out.println("Input folder: " + inputFolder);
@@ -52,7 +65,7 @@ public class Main {
 
                         // Process the file
                         String inputFilePath = file.getAbsolutePath();
-                        String outputFilePath = outputFolder + "\\" + file.getName().replace(".csv", ".parquet");
+                        String outputFilePath = Paths.get(outputFolder, file.getName().replace(".csv", ".parquet")).toString();
 
                         System.out.println("Processing file: " + inputFilePath);
                         processFile(inputFilePath, outputFilePath, conf);
@@ -106,6 +119,9 @@ public class Main {
             System.out.println("Cleaned Records: " + cleanedCount);
             System.out.println("Skipped Records: " + skippedCount);
             System.out.println("Cleaning complete for file: " + inputFilePath);
+
+            System.out.println("Ensuring output directory exists...");
+            Files.createDirectories(Paths.get(outputFilePath).getParent()); // Ensure parent directory exists
 
             System.out.println("Writing cleaned data to Parquet file: " + outputFilePath);
             ParquetWriterUtil.writeToParquet(cleanedData, outputFilePath, conf);
