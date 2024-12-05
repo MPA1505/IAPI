@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-app-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flask-app
+  template:
+    metadata:
+      labels:
+        app: flask-app
+    spec:
+      containers:
+      - name: flask-app-container
+        image: python:3.8-slim  # Using the official Python image
+        command: ["sh", "-c", "pip install -r /app/requirements.txt && python /app/app.py"]
+        ports:
+        - containerPort: 5000
+        volumeMounts:
+        - name: app-code
+          mountPath: /app  # Mount the ConfigMap at /app
+      volumes:
+      - name: app-code
+        configMap:
+          name: flask-app-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask-app-service
+spec:
+  type: LoadBalancer  # Use NodePort if LoadBalancer isn't available
+  selector:
+    app: flask-app
+  ports:
+    - protocol: TCP
+      port: 80         # Port exposed inside the cluster
+      targetPort: 5000 # Port your Flask app listens on
