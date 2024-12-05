@@ -10,14 +10,10 @@ import org.apache.hadoop.conf.Configuration;
 import java.util.List;
 
 public class ParquetWriterUtil {
-    public static void writeToParquet(List<RobotData> cleanedData, String outputFile) {
+    public static void writeToParquet(List<RobotData> cleanedData, String outputFile, Configuration configuration) {
         try {
-            Configuration conf = new Configuration();
-            conf.set("fs.defaultFS", "file:///"); // Use local file system
-            conf.set("fs.file.impl", org.apache.hadoop.fs.LocalFileSystem.class.getName());
-
             Path path = new Path(outputFile);
-            ParquetWriter<RobotData> writer = AvroParquetWriter.<RobotData>builder(HadoopOutputFile.fromPath(path, new Configuration()))
+            ParquetWriter<RobotData> writer = AvroParquetWriter.<RobotData>builder(HadoopOutputFile.fromPath(path, configuration))
                     .withSchema(RobotData.getClassSchema())
                     .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
                     .build();
