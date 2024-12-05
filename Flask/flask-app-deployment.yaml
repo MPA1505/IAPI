@@ -13,18 +13,18 @@ spec:
         app: flask-app
     spec:
       containers:
-      - name: flask-app-container
-        image: python:3.8-slim  # Using the official Python image
-        command: ["sh", "-c", "pip install -r /app/requirements.txt && python /app/app.py"]
-        ports:
-        - containerPort: 5000
-        volumeMounts:
-        - name: app-code
-          mountPath: /app  # Mount the ConfigMap at /app
+        - name: flask-app-container
+          image: python:3.8-slim  # Using the official Python image
+          command: ["sh", "-c", "pip install -r /app/requirements.txt && python /app/app.py"]
+          ports:
+            - containerPort: 5000
+          volumeMounts:
+            - name: app-code
+              mountPath: /app  # Mount the ConfigMap at /app
       volumes:
-      - name: app-code
-        configMap:
-          name: flask-app-code
+        - name: app-code
+          configMap:
+            name: flask-app-code
 ---
 apiVersion: v1
 kind: Service
