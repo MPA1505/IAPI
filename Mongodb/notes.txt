@@ -1,0 +1,20 @@
+To setup replicaset
+Access pod:
+kubectl exec -it mongodb-0 -- mongosh
+
+Initiate replicaset:
+rs.initiate({
+  _id: "rs0",
+  members: [
+    { _id: 0, host: "mongodb-0.mongodb-service.default.svc.cluster.local:27017" },
+    { _id: 1, host: "mongodb-1.mongodb-service.default.svc.cluster.local:27017" },
+    { _id: 2, host: "mongodb-2.mongodb-service.default.svc.cluster.local:27017" }
+  ]
+});
+
+Check status:
+rs.status();
+
+
+Connection string:
+mongodb://<username>:<password>@mongodb-0.mongodb-service.default.svc.cluster.local:27017,mongodb-1.mongodb-service.default.svc.cluster.local:27017,mongodb-2.mongodb-service.default.svc.cluster.local:27017/<database>?replicaSet=rs0
