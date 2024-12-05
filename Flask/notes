@@ -1,0 +1,5 @@
+kubectl create configmap flask-app-code --from-file=app.py --from-file=requirements.txt
+
+kubectl apply -f flask-app-deployment.yaml
+
+minikube service flask-app-service
