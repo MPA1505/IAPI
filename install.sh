@@ -5,8 +5,6 @@ minikube start
 echo "Enabling metrics-server addon..."
 minikube addons enable metrics-server
 
-echo "Creating Flask namespace..."
-minikube kubectl -- create namespace flask
 echo "Creating Flask deployment..."
 minikube kubectl -- apply -f Flask/
 
@@ -30,8 +28,7 @@ minikube kubectl -- create namespace keycloak
 echo "Creating Keycloak cluster..."
 minikube kubectl -- apply -f Keycloak/
 
-echo "Creating MongoDB namespace..."
-minikube kubectl -- create namespace mongodb
+
 echo "Creating MongoDB cluster..."
 minikube kubectl -- apply -f MongoDB/
 
