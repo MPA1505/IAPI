@@ -5,58 +5,38 @@ metadata:
   namespace: falco
 data:
   falco.yaml: |
-    # Falco main configuration file
+    # Minimal Falco config for >=0.34.0
 
-    # Whether to output JSON. Can be overridden with the -j command line option.
-    json_output: false
+    outputs:
+      rate: 1
+      max_burst: 1000
+      syslog:
+        enabled: true
+        facility: local0
+        priority: notice
 
-    # Whether to include the event output property in JSON output. Can be overridden with -pk.
-    json_include_output_property: true
+    time_format: iso_8601
 
-    # Whether to output to syslog. Can be overridden with -s.
-    syslog_output: true
-
-    # Use the following syslog facility. Can be overridden with -f.
-    syslog_facility: local0
-
-    # Priority level of output. Can be overridden with -o.
-    priority: notice
-
-    # Whether to buffer outputs to avoid blocking
-    buffered_outputs: false
-
-    # Output time format (ISO 8601 or relative)
-    time_format_iso_8601: true
-
-    # Kubernetes API settings
     k8s_api: https://kubernetes.default.svc
     k8s_api_cert: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-    k8s_api_token: ""  # Leave blank to use the mounted service account token
+    k8s_api_token: ""
 
-    # List of rules files to load. These should match the mounted volumes in your DaemonSet.
     rules_file:
       - /etc/falco/falco_rules.yaml
       - /etc/falco/falco_rules.local.yaml
 
-    # Enable to load Kubernetes audit events from a file (optional for audit logging).
-    # k8s_audit_events_file: /var/run/falco/audit_events.json
-
   falco_rules.yaml: |
-    # This is a subset of the default Falco rules
-    # For the full ruleset, visit https://github.com/falcosecurity/falco
     - rule: Write below etc
       desc: Detect any write below /etc
-      condition: evt.type in (open,openat,creat) and fd.name startswith /etc and not falco_ignore
-      output: "File below /etc opened for writing (user=%user.name user_loginuid=%user.loginuid command=%proc.cmdline file=%fd.name)"
+      condition: evt.type in (open,openat,creat) and fd.name startswith /etc
+      output: "File below /etc opened for writing (user=%user.name command=%proc.cmdline file=%fd.name)"
       priority: WARNING
       tags: [filesystem]
 
   falco_rules.local.yaml: |
-    # Place your custom rules here
-    # This file overrides or adds to the rules defined in falco_rules.yaml.
     - rule: Unauthorized Container Access
-      desc: Detect unauthorized shell access to a container
+      desc: Detect unauthorized shell access inside a container
       condition: evt.type = execve and proc.name = bash and container.id != host
-      output: "Unauthorized shell access detected in container (user=%user.name command=%proc.cmdline container=%container.id)"
+      output: "Unauthorized shell access detected (user=%user.name command=%proc.cmdline container=%container.id)"
       priority: WARNING
       tags: [container, runtime]

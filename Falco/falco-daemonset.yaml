@@ -4,14 +4,11 @@ metadata:
   name: falco
   namespace: falco
   labels:
-    role: security
     app: falco
 spec:
   selector:
     matchLabels:
       app: falco
-  updateStrategy:
-    type: RollingUpdate
   template:
     metadata:
       labels:
@@ -19,22 +16,15 @@ spec:
     spec:
       serviceAccountName: falco
       hostPID: true
-      tolerations:
-        - key: "node-role.kubernetes.io/master"
-          effect: NoSchedule
       containers:
         - name: falco
-          image: docker.io/falcosecurity/falco:latest
+          image: falcosecurity/falco:0.35.0
+          env:
+            - name: FALCO_BPF_PROBE
+              value: "/usr/src/falco-probe.o"
           args: ["/usr/bin/falco"]
-          resources:
-            limits:
-              cpu: 1000m
-              memory: 512Mi
-            requests:
-              cpu: 200m
-              memory: 256Mi
           securityContext:
-            privileged: true # This must be under the container's securityContext
+            privileged: true
           volumeMounts:
             - name: falco-config
               mountPath: /etc/falco
@@ -46,11 +36,6 @@ spec:
             - name: rootfs
               mountPath: /host/root
               readOnly: true
-          livenessProbe:
-            exec:
-              command: [ "pgrep", "falco" ]
-            initialDelaySeconds: 30
-            periodSeconds: 10
       volumes:
         - name: falco-config
           configMap:
