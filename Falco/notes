@@ -1,0 +1,3 @@
+minikube kubectl -- apply -f falco-rbac.yaml
+minikube kubectl -- apply -f falco-config.yaml
+minikube kubectl -- apply -f falco-daemonset.yaml
