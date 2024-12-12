@@ -2,6 +2,7 @@ package iapi;
 
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
+import com.opencsv.exceptions.CsvMalformedLineException;
 import com.opencsv.exceptions.CsvValidationException;
 
 import java.io.*;
@@ -60,7 +61,7 @@ public class FileMerger {
                     newFilesProcessed.set(true);
                 } catch (Exception e) {
                     System.err.println("Error processing file: " + file.getName());
-                    e.printStackTrace();
+                    System.err.println("Reason: " + e.getMessage());
                 }
             }
         });
@@ -81,12 +82,16 @@ public class FileMerger {
     private synchronized void processFile(File file) throws IOException, CsvValidationException {
         File currentOutputFile = getOrCreateOutputFile();
         List<String[]> buffer = new ArrayList<>(); // Buffer for batch writing
+        int skippedRows = 0; // Counter for skipped rows
 
         try (CSVReader csvReader = new CSVReader(new BufferedReader(new FileReader(file)))) {
             String[] header = csvReader.readNext();
             if (header == null) {
                 throw new IOException("Empty file: " + file.getName());
             }
+
+            // Determine the expected number of columns from the header
+            int expectedColumns = header.length;
 
             // Write header only if the file is new
             synchronized (this) {
@@ -99,22 +104,36 @@ public class FileMerger {
             }
 
             String[] row;
-            while ((row = csvReader.readNext()) != null) {
-                buffer.add(row);
-                long rowSize = calculateRowSize(row);
+            while (true) {
+                try {
+                    row = csvReader.readNext();
+                    if (row == null) break;
 
-                // Check if the current file size exceeds the limit
-                if (currentFileSize.addAndGet(rowSize) > maxFileSizeBytes) {
-                    synchronized (this) {
-                        // Flush buffer to the current file and create a new one
-                        writeBatchToFile(currentOutputFile, buffer);
-                        buffer.clear(); // Clear buffer for next batch
-                        currentOutputFile = getNextOutputFile();
-                        List<String[]> headerAsList = new ArrayList<>();
-                        headerAsList.add(header);
-                        writeBatchToFile(currentOutputFile, headerAsList); // Write header to the new file
-                        currentFileSize.set(calculateRowSize(header) + rowSize);
+                    // Validate the row
+                    if (isValidRow(row, expectedColumns)) {
+                        buffer.add(row);
+                    } else {
+                        skippedRows++;
                     }
+
+                    long rowSize = calculateRowSize(row);
+
+                    // Check if the current file size exceeds the limit
+                    if (currentFileSize.addAndGet(rowSize) > maxFileSizeBytes) {
+                        synchronized (this) {
+                            // Flush buffer to the current file and create a new one
+                            writeBatchToFile(currentOutputFile, buffer);
+                            buffer.clear(); // Clear buffer for next batch
+                            currentOutputFile = getNextOutputFile();
+                            List<String[]> headerAsList = new ArrayList<>();
+                            headerAsList.add(header);
+                            writeBatchToFile(currentOutputFile, headerAsList); // Write header to the new file
+                            currentFileSize.set(calculateRowSize(header) + rowSize);
+                        }
+                    }
+                } catch (CsvMalformedLineException e) {
+                    skippedRows++;
+                    System.err.println("Skipped malformed row: " + e.getMessage());
                 }
             }
 
@@ -124,7 +143,19 @@ public class FileMerger {
                     writeBatchToFile(currentOutputFile, buffer);
                 }
             }
+
+            if (skippedRows > 0) {
+                System.out.println("Skipped rows: " + skippedRows);
+            }
+        } catch (CsvMalformedLineException e) {
+            System.err.println("Error processing file: " + file.getName());
+            System.err.println("Reason: " + e.getMessage());
         }
+    }
+
+    private boolean isValidRow(String[] row, int expectedColumns) {
+        // Validate the row by checking the number of columns and ensuring no field is null or empty
+        return row.length == expectedColumns && Arrays.stream(row).allMatch(field -> field != null && !field.trim().isEmpty());
     }
 
     private void writeBatchToFile(File file, List<String[]> rows) throws IOException {
@@ -145,8 +176,11 @@ public class FileMerger {
 
     private synchronized File getNextOutputFile() throws IOException {
         fileIndex++;
-        return getOrCreateOutputFile();
+        File newFile = getOrCreateOutputFile();
+        System.out.println("Switching to new output file: " + newFile.getAbsolutePath());
+        return newFile;
     }
+
 
     private long calculateRowSize(String[] row) {
         return Arrays.stream(row).mapToInt(String::length).sum() + row.length + 1; // Approximation

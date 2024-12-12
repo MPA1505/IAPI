@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: falco
+  namespace: falco
+  labels:
+    app: falco
+spec:
+  selector:
+    matchLabels:
+      app: falco
+  template:
+    metadata:
+      labels:
+        app: falco
+    spec:
+      serviceAccountName: falco
+      hostPID: true
+      containers:
+        - name: falco
+          image: falcosecurity/falco:0.35.0
+          env:
+            - name: FALCO_BPF_PROBE
+              value: "/usr/src/falco-probe.o"
+          args: ["/usr/bin/falco"]
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: falco-config
+              mountPath: /etc/falco
+            - name: dev-fs
+              mountPath: /host/dev
+            - name: proc-fs
+              mountPath: /host/proc
+              readOnly: true
+            - name: rootfs
+              mountPath: /host/root
+              readOnly: true
+      volumes:
+        - name: falco-config
+          configMap:
+            name: falco-config
+        - name: dev-fs
+          hostPath:
+            path: /dev
+        - name: proc-fs
+          hostPath:
+            path: /proc
+        - name: rootfs
+          hostPath:
+            path: /

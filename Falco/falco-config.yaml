@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: falco-config
+  namespace: falco
+data:
+  falco.yaml: |
+    # Minimal Falco config for >=0.34.0
+
+    outputs:
+      rate: 1
+      max_burst: 1000
+      syslog:
+        enabled: true
+        facility: local0
+        priority: notice
+
+    time_format: iso_8601
+
+    k8s_api: https://kubernetes.default.svc
+    k8s_api_cert: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    k8s_api_token: ""
+
+    rules_file:
+      - /etc/falco/falco_rules.yaml
+      - /etc/falco/falco_rules.local.yaml
+
+  falco_rules.yaml: |
+    - rule: Write below etc
+      desc: Detect any write below /etc
+      condition: evt.type in (open,openat,creat) and fd.name startswith /etc
+      output: "File below /etc opened for writing (user=%user.name command=%proc.cmdline file=%fd.name)"
+      priority: WARNING
+      tags: [filesystem]
+
+  falco_rules.local.yaml: |
+    - rule: Unauthorized Container Access
+      desc: Detect unauthorized shell access inside a container
+      condition: evt.type = execve and proc.name = bash and container.id != host
+      output: "Unauthorized shell access detected (user=%user.name command=%proc.cmdline container=%container.id)"
+      priority: WARNING
+      tags: [container, runtime]

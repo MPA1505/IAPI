@@ -7,26 +7,36 @@ import java.nio.file.Paths;
 
 public class Main {
     public static void main(String[] args) {
-        // Check if the required arguments are provided
-        if (args.length < 2) {
-            System.err.println("Not enough arguments provided. Defaulting to:");
-            System.err.println("Input folder: .\\datasets\\datasets_20hz_1_robot_1_minute");
-            System.err.println("Output file: .\\datasets\\merged_datasets\\merged_dataset.csv");
+        // Default values
+        String defaultInputFolder = ".\\datasets\\datasets_20hz_1_robot_1_minute";
+        String defaultOutputFile = ".\\datasets\\merged_datasets\\merged_dataset.csv";
+        int defaultMaxFileSizeMB = 300;
 
-            // Default arguments
-            args = new String[]{
-                    ".\\datasets\\datasets_20hz_1_robot_1_minute",
-                    ".\\datasets\\merged_datasets\\merged_dataset.csv"
-            };
+// Parse arguments
+        String inputFolder = args.length > 0 ? args[0] : defaultInputFolder;
+        String outputFile = args.length > 1 ? args[1] : defaultOutputFile;
+        int maxFileSizeMB;
+
+        try {
+            // Parse max file size if provided, otherwise use the default value
+            maxFileSizeMB = args.length > 2 ? Integer.parseInt(args[2]) : defaultMaxFileSizeMB;
+            if (maxFileSizeMB <= 0) {
+                throw new IllegalArgumentException("Max file size must be greater than 0.");
+            }
+        } catch (NumberFormatException e) {
+            System.err.println("Invalid max file size specified: " + (args.length > 2 ? args[2] : "N/A"));
+            System.err.println("Using default max file size: " + defaultMaxFileSizeMB + " MB");
+            maxFileSizeMB = defaultMaxFileSizeMB;
+        } catch (IllegalArgumentException e) {
+            System.err.println(e.getMessage());
+            System.err.println("Using default max file size: " + defaultMaxFileSizeMB + " MB");
+            maxFileSizeMB = defaultMaxFileSizeMB;
         }
-
-        String inputFolder = args[0];
-        String outputFile = args[1];
-        int maxFileSizeMB = 300; // Maximum output file size in MB
 
         System.out.println("Starting the file merging process.");
         System.out.println("Input folder: " + inputFolder);
         System.out.println("Output file: " + outputFile);
+        System.out.println("Max file size: " + maxFileSizeMB + " MB");
 
         // Validate input folder
         File folder = new File(inputFolder);
