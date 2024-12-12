@@ -25,7 +25,7 @@ spec:
       containers:
         - name: falco
           image: docker.io/falcosecurity/falco:latest
-          args: ["/usr/bin/falco", "-K", "/var/run/secrets/kubernetes.io/serviceaccount/token"]
+          args: ["/usr/bin/falco"]
           resources:
             limits:
               cpu: 1000m
