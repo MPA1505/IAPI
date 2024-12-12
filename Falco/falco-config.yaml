@@ -8,7 +8,6 @@ data:
     # Falco main configuration file
 
     # Whether to output JSON. Can be overridden with the -j command line option.
-
     json_output: false
 
     # Whether to include the event output property in JSON output. Can be overridden with -pk.
