@@ -43,12 +43,6 @@ spec:
           value: "org.apache.kafka.connect.json.JsonConverter"
         - name: CONNECT_PLUGIN_PATH
           value: "/usr/share/java,/usr/share/confluent-hub-components"
-        volumeMounts:
-        - name: kafka-connect-plugins
-          mountPath: /usr/share/confluent-hub-components
-      volumes:
-      - name: kafka-connect-plugins
-        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

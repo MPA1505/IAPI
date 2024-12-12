@@ -18,3 +18,15 @@ rs.status();
 
 Connection string:
 mongodb://<username>:<password>@mongodb-0.mongodb-service.default.svc.cluster.local:27017,mongodb-1.mongodb-service.default.svc.cluster.local:27017,mongodb-2.mongodb-service.default.svc.cluster.local:27017/<database>?replicaSet=rs0
+
+
+use admin
+db.createUser({
+  user: "mongouser",
+  pwd: "securepassword",
+  roles: [ { role: "readWrite", db: "test_db" } ]
+})
+
+
+use test_db
+db.test_collection.find()

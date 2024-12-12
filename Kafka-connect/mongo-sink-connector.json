@@ -1,0 +1,14 @@
+{
+    "name": "mongo-sink-connector",
+    "config": {
+      "connector.class": "com.mongodb.kafka.connect.MongoSinkConnector",
+      "tasks.max": "1",
+      "topics": "test-topic",
+      "connection.uri": "mongodb://mongouser:securepassword@mongodb-0.mongodb-service.default.svc.cluster.local:27017,mongodb-1.mongodb-service.default.svc.cluster.local:27017,mongodb-2.mongodb-service.default.svc.cluster.local:27017/admin?replicaSet=rs0",
+      "database": "test_db",
+      "collection": "test_collection",
+      "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+      "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+      "value.converter.schemas.enable": "false"
+    }
+  }  
