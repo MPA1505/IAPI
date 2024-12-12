@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: create-configmap-script
+data:
+  create-configmap.sh: |
+    #!/bin/bash
+
+    echo "Creating ConfigMap from files..."
+
+    kubectl create configmap flask-app-code --from-file=app.py --from-file=requirements.txt --dry-run=client -o yaml > flask-app-configmap.yaml
+
+    echo "Applying ConfigMap..."
+
+    kubectl apply -f flask-app-configmap.yaml
+
+    echo "ConfigMap created and applied successfully."
