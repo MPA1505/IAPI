@@ -23,6 +23,10 @@ spec:
           value: zookeeper:2181
         - name: ALLOW_PLAINTEXT_LISTENER
           value: "yes"
+        - name: KAFKA_ADVERTISED_LISTENERS
+          value: PLAINTEXT://kafka:9092
+        - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+          value: "true"
         resources:
           requests:
             memory: "1Gi"

@@ -1,0 +1,35 @@
+Topics needed in kafka:
+kubectl exec -it <kafka-pod-name> -n kafka -- kafka-topics.sh --create \
+--topic connect-offsets \
+--bootstrap-server kafka:9092 \
+--partitions 1 \
+--replication-factor 1 \
+--config cleanup.policy=compact
+kubectl exec -it <kafka-pod-name> -n kafka -- kafka-topics.sh --create \
+--topic connect-configs \
+--bootstrap-server kafka:9092 \
+--partitions 1 \
+--replication-factor 1 \
+--config cleanup.policy=compact
+kubectl exec -it <kafka-pod-name> -n kafka -- kafka-topics.sh --create \
+--topic connect-statuses \
+--bootstrap-server kafka:9092 \
+--partitions 1 \
+--replication-factor 1 \
+--config cleanup.policy=compact
+
+
+curl -X POST http://kafka-connect:8083/connectors -H "Content-Type: application/json" -d '{
+  "name": "mongo-sink-connector",
+  "config": {
+    "connector.class": "com.mongodb.kafka.connect.MongoSinkConnector",
+    "tasks.max": "1",
+    "topics": "test-topic",
+    "connection.uri": "mongodb://mongouser:securepassword@mongodb-service:27017",
+    "database": "kafkaDB",
+    "collection": "testCollection",
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+  }
+}'
+
