@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-configmap-job
+spec:
+  template:
+    spec:
+      containers:
+      - name: create-configmap
+        image: bitnami/kubectl:latest
+        command: ["/bin/sh", "-c", "sh /scripts/create-configmap.sh"]
+        volumeMounts:
+        - name: script-volume
+          mountPath: /scripts
+      restartPolicy: Never
+      volumes:
+      - name: script-volume
+        configMap:
+          name: create-configmap-script
+  backoffLimit: 4
