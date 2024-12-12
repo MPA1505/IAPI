@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: falco-config
+  namespace: falco
+data:
+  falco.yaml: |
+    # Falco main configuration file
+    json_output: false
+    json_include_output_property: true
+    syslog_output: true
+    syslog_facility: local0
+    priority: notice
+    buffered_outputs: false
+    time_format_iso_8601: true
+    # Enable Kubernetes auditing for Falco if desired:
+    # k8s_audit_enabled: true
+    # k8s_audit_events_file: /var/run/falco/audit_events.json
+
+    # Location of rules files:
+    rules_file:
+      - /etc/falco/falco_rules.yaml
+      - /etc/falco/falco_rules.local.yaml
+
+  falco_rules.yaml: |
+    # This is a subset of the default Falco rules
+    # For the full ruleset, visit https://github.com/falcosecurity/falco
+    - rule: Write below etc
+      desc: Detect any write below /etc
+      condition: evt.type in (open,openat,creat) and fd.name startswith /etc and not falco_ignore
+      output: "File below /etc opened for writing (user=%user.name user_loginuid=%user.loginuid command=%proc.cmdline file=%fd.name)"
+      priority: WARNING
+      tags: [filesystem]
+
+  falco_rules.local.yaml: |
+    # Place your custom rules here
+    # This file overrides or adds to the rules defined in falco_rules.yaml.

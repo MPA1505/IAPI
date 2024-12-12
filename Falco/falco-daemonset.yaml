@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: falco
+  namespace: falco
+  labels:
+    role: security
+    app: falco
+spec:
+  selector:
+    matchLabels:
+      app: falco
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: falco
+    spec:
+      serviceAccountName: falco
+      # Falco must run in the host PID namespace and with capabilities to observe the host system.
+      hostPID: true
+      hostNetwork: false
+      tolerations:
+        - key: "node-role.kubernetes.io/master"
+          effect: NoSchedule
+      securityContext:
+        runAsUser: 0
+        runAsNonRoot: false
+        privileged: true
+      containers:
+        - name: falco
+          image: docker.io/falcosecurity/falco:latest
+          args: ["/usr/bin/falco", "-K", "/var/run/secrets/kubernetes.io/serviceaccount/token"]
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+            requests:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            privileged: true
+          volumeMounts:
+            # Falco configuration and rules
+            - name: falco-config
+              mountPath: /etc/falco
+            # Falco needs access to the kernel headers/module to capture syscalls
+            - name: dev-fs
+              mountPath: /host/dev
+            # Access to the proc filesystem
+            - name: proc-fs
+              mountPath: /host/proc
+              readOnly: true
+            # Access to the host's root filesystem
+            - name: rootfs
+              mountPath: /host/root
+              readOnly: true
+          #env:
+            # If you’re using a Kubernetes audit logging pipeline, configure these accordingly.
+            # - name: FALCO_K8S_AUDIT_EVENTS_FILE
+            #   value: /var/run/falco/audit_events.json
+            # - name: FALCO_GRPC_ENABLED
+            #   value: "true"
+            # - name: FALCO_GRPC_OUTPUT_ENABLED
+            #   value: "true"
+          livenessProbe:
+            exec:
+              command: [ "pgrep", "falco" ]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: falco-config
+          configMap:
+            name: falco-config
+        - name: dev-fs
+          hostPath:
+            path: /dev
+        - name: proc-fs
+          hostPath:
+            path: /proc
+        - name: rootfs
+          hostPath:
+            path: /
