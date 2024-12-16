@@ -7,6 +7,7 @@ import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -44,8 +45,7 @@ public class ParquetWriterUtil {
         if (instance == null) {
             synchronized (ParquetWriterUtil.class) {
                 if (instance == null) {
-                    instance = new ParquetWriterUtil(outputFilePath, conf, maxFileSizeBytes);
-                }
+                    instance = new ParquetWriterUtil(outputFilePath, conf, maxFileSizeBytes);}
             }
         }
         return instance;
@@ -54,10 +54,18 @@ public class ParquetWriterUtil {
     private void initializeWriter() throws IOException {
         String newOutputPath = generateNewOutputPath();
         Path path = new Path(newOutputPath);
+
+        File outputFile = new File(newOutputPath);
+        if (outputFile.exists() && outputFile.length() > 0) {
+            System.out.printf("File '%s' already exists and is not empty. Skipping initialization.%n", newOutputPath);
+            return; // Do not overwrite an existing non-empty file
+        }
+
         writer = AvroParquetWriter.<RobotData>builder(HadoopOutputFile.fromPath(path, conf))
                 .withSchema(RobotData.getClassSchema())
                 .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
                 .build();
+
         System.out.println("Initialized Parquet writer for file: " + newOutputPath);
     }
 
@@ -65,10 +73,24 @@ public class ParquetWriterUtil {
         Path outputPath = new Path(outputFilePath);
         String folderName = outputPath.getName();
 
+        // Handle cases where outputFilePath ends with ".parquet"
         if (folderName.endsWith(".parquet")) {
-            folderName = folderName.substring(0, folderName.lastIndexOf('.'));
-            outputPath = outputPath.getParent();
+            folderName = folderName.substring(0, folderName.lastIndexOf('.')); // Remove ".parquet"
+            outputPath = outputPath.getParent(); // Get the parent directory
         }
+
+        // Create the directory if it does not exist
+        File directory = new File(outputPath.toString());
+        if (!directory.exists()) {
+            boolean created = directory.mkdirs(); // Create directories
+            if (created) {
+                System.out.println("Created directory: " + directory.getAbsolutePath());
+            } else {
+                System.err.println("Failed to create directory: " + directory.getAbsolutePath());
+            }
+        }
+
+        // Generate the new output file path
         return outputPath + "/" + folderName + "_" + fileIndex + ".parquet";
     }
 
