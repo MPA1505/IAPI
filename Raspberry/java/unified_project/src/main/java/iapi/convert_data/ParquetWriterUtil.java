@@ -5,38 +5,48 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.avro.AvroParquetWriter;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
-import org.apache.parquet.hadoop.example.ExampleParquetWriter;
-import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ParquetWriterUtil {
-    private static ParquetWriterUtil instance;
+
+    private static volatile ParquetWriterUtil instance;
 
     private ParquetWriter<RobotData> writer;
-    private String outputFilePath;
-    private Configuration conf;
-    private long maxFileSizeBytes;
-    private AtomicLong currentFileSize;
-    private int fileIndex;
+    private final String outputFilePath;
+    private final Configuration conf;
+    private final long maxFileSizeBytes;
+    private final AtomicLong currentFileSize = new AtomicLong(0);
+    private int fileIndex = 1;
+
+    private final BlockingQueue<RobotData> recordQueue = new LinkedBlockingQueue<>();
+    private volatile boolean isRunning = true;
+    private final Thread writerThread;
 
     private ParquetWriterUtil(String outputFilePath, Configuration conf, long maxFileSizeBytes) throws IOException {
         this.outputFilePath = outputFilePath;
         this.conf = conf;
         this.maxFileSizeBytes = maxFileSizeBytes;
-        this.currentFileSize = new AtomicLong(0);
-        this.fileIndex = 1;
         initializeWriter();
+
+        // Start the asynchronous writer thread
+        writerThread = new Thread(this::processQueue);
+        writerThread.setDaemon(true);
+        writerThread.start();
     }
 
-    public static synchronized ParquetWriterUtil getInstance(String outputFilePath, Configuration conf, long maxFileSizeBytes) throws IOException {
+    public static ParquetWriterUtil getInstance(String outputFilePath, Configuration conf, long maxFileSizeBytes) throws IOException {
         if (instance == null) {
-            instance = new ParquetWriterUtil(outputFilePath, conf, maxFileSizeBytes);
+            synchronized (ParquetWriterUtil.class) {
+                if (instance == null) {
+                    instance = new ParquetWriterUtil(outputFilePath, conf, maxFileSizeBytes);
+                }
+            }
         }
         return instance;
     }
@@ -46,47 +56,69 @@ public class ParquetWriterUtil {
         Path path = new Path(newOutputPath);
         writer = AvroParquetWriter.<RobotData>builder(HadoopOutputFile.fromPath(path, conf))
                 .withSchema(RobotData.getClassSchema())
-                .withWriteMode(ParquetFileWriter.Mode.OVERWRITE) // Ensure OVERWRITE mode
+                .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
                 .build();
-
         System.out.println("Initialized Parquet writer for file: " + newOutputPath);
     }
 
     private String generateNewOutputPath() {
-        // Ensure outputFilePath is treated as a directory
         Path outputPath = new Path(outputFilePath);
         String folderName = outputPath.getName();
 
-        // If outputFilePath ends with .parquet, treat it as a file-like name and remove it
         if (folderName.endsWith(".parquet")) {
             folderName = folderName.substring(0, folderName.lastIndexOf('.'));
-            outputPath = outputPath.getParent(); // Get the parent directory
+            outputPath = outputPath.getParent();
         }
-
-        // Construct the new file path with the folder name and index
         return outputPath + "/" + folderName + "_" + fileIndex + ".parquet";
     }
 
-    public synchronized void writeRecord(RobotData record) throws IOException {
-        if (currentFileSize.get() >= maxFileSizeBytes) {
-            // Close current writer and initialize a new one
-            closeWriter();
-            fileIndex++;
-            initializeWriter();
-            currentFileSize.set(0); // Reset file size counter
-            System.out.println("Max file size reached. Created new Parquet file: " + generateNewOutputPath());
+    public void writeRecord(RobotData record) {
+        if (!isRunning) {
+            throw new IllegalStateException("Cannot write to a closed writer.");
         }
-
-        writer.write(record);
-        // Approximate size increment based on Avro serialization size
-        long recordSize = record.toString().getBytes().length;
-        currentFileSize.addAndGet(recordSize);
+        recordQueue.offer(record);
     }
 
-    private long calculateRecordSize(RobotData record) {
-        // Approximation: Sum of string lengths and numerical bytes
-        // Adjust this method based on your actual data size estimation needs
-        return record.toString().getBytes().length;
+    public synchronized void writeBatch(List<RobotData> records) throws IOException {
+        for (RobotData record : records) {
+            writeRecord(record);
+        }
+    }
+
+    private void processQueue() {
+        try {
+            while (isRunning || !recordQueue.isEmpty()) {
+                RobotData record = recordQueue.poll(); // Fetch a record from the queue
+                if (record != null) {
+                    writeRecordToFile(record);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error while processing record queue: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            closeWriter();
+        }
+    }
+
+    private synchronized void writeRecordToFile(RobotData record) throws IOException {
+        if (currentFileSize.get() >= maxFileSizeBytes) {
+            rotateFile();
+        }
+        writer.write(record);
+        currentFileSize.addAndGet(estimateRecordSize(record));
+    }
+
+    private long estimateRecordSize(RobotData record) {
+        return record.toString().getBytes().length; // Replace with better estimation if needed
+    }
+
+    private void rotateFile() throws IOException {
+        closeWriter();
+        fileIndex++;
+        initializeWriter();
+        currentFileSize.set(0);
+        System.out.println("Max file size reached. Created new Parquet file: " + generateNewOutputPath());
     }
 
     public synchronized void closeWriter() {
@@ -101,12 +133,22 @@ public class ParquetWriterUtil {
         }
     }
 
+    public void shutdown() {
+        isRunning = false;
+        try {
+            writerThread.join(); // Wait for the writer thread to finish processing
+        } catch (InterruptedException e) {
+            System.err.println("Writer thread interrupted during shutdown: " + e.getMessage());
+            e.printStackTrace();
+        }
+        closeWriter();
+        System.out.println("Shutdown complete. Parquet writer closed.");
+    }
 
-    // Ensure that writer is closed when the application shuts down
     static {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             if (instance != null) {
-                instance.closeWriter();
+                instance.shutdown();
                 System.out.println("Shutdown hook executed. Parquet writer closed.");
             }
         }));
