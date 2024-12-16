@@ -1,8 +1,12 @@
 from confluent_kafka import Producer
 import json
+import time
+from datetime import datetime
+import random
 
+# Kafka configuration
 kafka_config = {
-    'bootstrap.servers': 'kafka:9092',
+    'bootstrap.servers': 'localhost:9093',
 }
 
 # Initialize the Kafka producer
@@ -17,13 +21,18 @@ def delivery_report(err, msg):
 
 # Produce messages
 for i in range(10):
-    record_key = f"key-{i}"
-    record_value = json.dumps({'value': f"Message {i}"})
+    record_key = f"robot-{i}"
+    record_value = json.dumps({
+        'timestamp': datetime.utcnow().isoformat(),
+        'value': random.randint(1, 100),
+        'robotId': random.randint(1, 3)
+    })
     producer.produce(
         'test-topic',
         key=record_key,
         value=record_value,
         callback=delivery_report
     )
+    time.sleep(1)
 
 producer.flush()

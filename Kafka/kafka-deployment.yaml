@@ -24,7 +24,13 @@ spec:
         - name: ALLOW_PLAINTEXT_LISTENER
           value: "yes"
         - name: KAFKA_ADVERTISED_LISTENERS
-          value: PLAINTEXT://kafka:9092
+          value: PLAINTEXT://kafka:9092,PLAINTEXT_EXTERNAL://localhost:9093
+        - name: KAFKA_LISTENERS
+          value: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_EXTERNAL://0.0.0.0:9093
+        - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+          value: PLAINTEXT:PLAINTEXT,PLAINTEXT_EXTERNAL:PLAINTEXT
+        - name: KAFKA_INTER_BROKER_LISTENER_NAME
+          value: PLAINTEXT
         - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
           value: "true"
         resources:
@@ -48,8 +54,13 @@ metadata:
   name: kafka
   namespace: kafka
 spec:
+  type: NodePort
   ports:
-  - port: 9092
+  - name: internal
+    port: 9092
     targetPort: 9092
+  - name: external
+    port: 9093
+    targetPort: 9093
   selector:
     app: kafka
