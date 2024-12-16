@@ -17,7 +17,10 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Creating Flask deployment..."
-minikube kubectl -- apply -f Flask/
+cd ./Flask
+minikube kubectl -- create configmap flask-app-code --from-file=app.py --from-file=requirements.txt
+cd -
+minikube kubectl -- apply -f Flask/flask-app-deployment.yaml
 if [ $? -ne 0 ]; then
   echo "Failed to create Flask deployment"
   exit 1
@@ -87,7 +90,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Creating Kafka Connect deployment..."
-minikube kubectl -- apply -f KafkaConnect/
+minikube kubectl -- apply -f Kafka-connect/
 if [ $? -ne 0 ]; then
   echo "Failed to create Kafka Connect deployment"
   exit 1
