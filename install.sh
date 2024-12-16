@@ -86,4 +86,12 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+echo "Creating Kafka Connect deployment..."
+minikube kubectl -- apply -f KafkaConnect/
+if [ $? -ne 0 ]; then
+  echo "Failed to create Kafka Connect deployment"
+  exit 1
+fi
+
+
 echo "Setup completed."
