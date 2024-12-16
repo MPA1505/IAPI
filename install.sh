@@ -23,13 +23,6 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-echo "Creating Prometheus namespace..."
-minikube kubectl -- create namespace prometheus
-if [ $? -ne 0 ]; then
-  echo "Failed to create Prometheus namespace"
-  exit 1
-fi
-
 echo "Creating Prometheus cluster..."
 minikube kubectl -- apply -f Prometheus/
 if [ $? -ne 0 ]; then
@@ -80,7 +73,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Creating MongoDB deployment..."
-minikube kubectl -- apply -f MongoDB/
+minikube kubectl -- apply -f Mongodb/
 if [ $? -ne 0 ]; then
   echo "Failed to create MongoDB deployment"
   exit 1
