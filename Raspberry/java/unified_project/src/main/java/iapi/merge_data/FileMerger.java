@@ -120,16 +120,30 @@ public class FileMerger {
         return num.isEmpty() ? Integer.MAX_VALUE : Integer.parseInt(num);
     }
 
-    /**
-     * Shuts down resources.
-     */
-    public void shutdown() {
+    public void stop() {
+        System.out.println("Stopping FileMerger...");
+        try {
+            executor.shutdown(); // Stop accepting new tasks
+            if (!executor.awaitTermination(30, TimeUnit.SECONDS)) { // Wait for ongoing tasks
+                System.err.println("Forcing shutdown of executor...");
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            System.err.println("Shutdown interrupted. Forcing immediate shutdown...");
+            executor.shutdownNow();
+            Thread.currentThread().interrupt(); // Restore interrupt status
+        }
+
+        // Close Parquet writer
         try {
             parquetWriterUtil.closeWriter();
-            executor.shutdown();
-            executor.awaitTermination(10, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            System.err.println("Error shutting down FileMerger: " + e.getMessage());
+            System.out.println("Parquet writer closed successfully.");
+        } catch (Exception e) {
+            System.err.println("Error while closing Parquet writer: " + e.getMessage());
         }
+
+        System.out.println("FileMerger stopped.");
     }
+
+
 }

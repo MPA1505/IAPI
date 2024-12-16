@@ -17,14 +17,17 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Creating Flask deployment..."
-minikube kubectl -- apply -f Flask/
+cd ./Flask
+minikube kubectl -- create configmap flask-app-code --from-file=app.py --from-file=requirements.txt
+cd -
+minikube kubectl -- apply -f Flask/flask-app-deployment.yaml
 if [ $? -ne 0 ]; then
   echo "Failed to create Flask deployment"
   exit 1
 fi
 
 echo "Creating Prometheus namespace..."
-minikube kubectl -- create namespace prometheus
+minikube kubectl -- create namespace monitoring
 if [ $? -ne 0 ]; then
   echo "Failed to create Prometheus namespace"
   exit 1
@@ -80,10 +83,18 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Creating MongoDB deployment..."
-minikube kubectl -- apply -f MongoDB/
+minikube kubectl -- apply -f Mongodb/
 if [ $? -ne 0 ]; then
   echo "Failed to create MongoDB deployment"
   exit 1
 fi
+
+echo "Creating Kafka Connect deployment..."
+minikube kubectl -- apply -f Kafka-connect/
+if [ $? -ne 0 ]; then
+  echo "Failed to create Kafka Connect deployment"
+  exit 1
+fi
+
 
 echo "Setup completed."

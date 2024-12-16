@@ -4,10 +4,9 @@ import iapi.convert_data.HadoopConfig;
 import iapi.merge_data.FileMerger;
 import org.apache.hadoop.conf.Configuration;
 
-import java.io.IOException;
-import java.nio.file.*;
-
 public class Main {
+
+    private static volatile boolean isRunning = true; // Flag to control the loop
 
     public static void main(String[] args) {
         // Default values
@@ -34,19 +33,28 @@ public class Main {
 
             // Add shutdown hook for graceful shutdown
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                System.out.println("Shutdown detected. Cleaning up resources...");
-                merger.shutdown();
-                System.exit(0);
+                System.out.println("Shutdown signal received. Stopping application...");
+                isRunning = false; // Stop the loop
+                try {
+                    merger.stop(); // Gracefully stop the FileMerger
+                    System.out.println("Application stopped gracefully.");
+                } catch (Exception e) {
+                    System.err.println("Error during shutdown: " + e.getMessage());
+                    e.printStackTrace();
+                }
             }));
 
-            // Monitor directory for new files
-            //monitorDirectory(merger, inputFolder);
             // Continuously monitor and process files
-            while (!Thread.currentThread().isInterrupted()) {
-                System.out.println("New files detected");
-                merger.mergeFilesConcurrently();
+            while (isRunning) {
+                System.out.println("Checking for new files...");
+                merger.mergeFilesConcurrently(); // Process files
                 System.out.println("Waiting for new files...");
-                Thread.sleep(5000); // Pause before checking again
+                try {
+                    Thread.sleep(5000); // Pause before checking again
+                } catch (InterruptedException e) {
+                    System.out.println("Thread interrupted. Exiting...");
+                    isRunning = false;
+                }
             }
 
         } catch (Exception e) {
@@ -73,30 +81,5 @@ public class Main {
             }
         }
         return defaultMaxFileSize;
-    }
-
-    /**
-     * Monitors the input folder for new files and triggers the merge process.
-     */
-    private static void monitorDirectory(FileMerger merger, String inputFolder) throws IOException, InterruptedException {
-        WatchService watchService = FileSystems.getDefault().newWatchService();
-        Path path = Paths.get(inputFolder);
-        path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE);
-
-        System.out.println("Monitoring directory for new files: " + inputFolder);
-
-        while (true) {
-            WatchKey key = watchService.take();
-            for (WatchEvent<?> event : key.pollEvents()) {
-                if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
-                    System.out.println("New file detected: " + event.context());
-                    merger.mergeFilesConcurrently();
-                }
-            }
-            if (!key.reset()) {
-                break;
-            }
-        }
-        watchService.close();
     }
 }
