@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Define paths
-ORIGINAL_JAR=".\java\convert_data\target\convert_data-1.0-SNAPSHOT.jar"
-FIXED_JAR="convert_data_fixed.jar"
+ORIGINAL_JAR=".\java\unified_project\target\unified_project-1.0-SNAPSHOT.jar"
+FIXED_JAR="unified_project-1.0-SNAPSHOT_fixed.jar"
 
 # Step 1: Create a temporary directory and extract JAR
 mkdir -p tmp
@@ -16,4 +16,4 @@ rm -f META-INF/*.SF META-INF/*.RSA META-INF/*.DSA
 jar cfvm "../$FIXED_JAR" META-INF/MANIFEST.MF .
 
 # Optional: Cleanup the temporary directory
-rm -rf tmp
+rm -rf ".\tmp"

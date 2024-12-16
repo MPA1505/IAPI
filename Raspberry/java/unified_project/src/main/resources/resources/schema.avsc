@@ -1,0 +1,97 @@
+{
+  "type": "record",
+  "name": "RobotData",
+  "namespace": "iapi",
+  "fields": [
+    { "name": "ID", "type": "int" },
+    { "name": "Timestamp", "type": "double" },
+    {
+      "name": "ActualJointPositions",
+      "type": {
+        "type": "array",
+        "items": "double"
+      }
+    },
+    {
+      "name": "ActualJointVelocities",
+      "type": {
+        "type": "array",
+        "items": "double"
+      }
+    },
+    {
+      "name": "ActualJointCurrents",
+      "type": {
+        "type": "array",
+        "items": "double"
+      }
+    },
+    {
+      "name": "ActualCartesianCoordinates",
+      "type": {
+        "type": "array",
+        "items": "double"
+      }
+    },
+    {
+      "name": "ActualToolSpeed",
+      "type": {
+        "type": "array",
+        "items": "double"
+      }
+    },
+    {
+      "name": "GeneralizedForces",
+      "type": {
+        "type": "array",
+        "items": "double"
+      }
+    },
+    {
+      "name": "TemperatureOfEachJoint",
+      "type": {
+        "type": "array",
+        "items": "double"
+      }
+    },
+    { "name": "ExecutionTime", "type": "double" },
+    { "name": "SafetyStatus", "type": "int" },
+    {
+      "name": "ToolAcceleration",
+      "type": {
+        "type": "array",
+        "items": "double"
+      }
+    },
+    { "name": "NormOfCartesianLinearMomentum", "type": "double" },
+    {
+      "name": "RobotCurrent",
+      "type": "double"
+    },
+    {
+      "name": "JointVoltages",
+      "type": {
+        "type": "array",
+        "items": "double"
+      }
+    },
+    {
+      "name": "ElbowPosition",
+      "type": {
+        "type": "array",
+        "items": "double"
+      }
+    },
+    {
+      "name": "ElbowVelocity",
+      "type": {
+        "type": "array",
+        "items": "double"
+      }
+    },
+    { "name": "ToolCurrent", "type": "double" },
+    { "name": "ToolTemperature", "type": "double" },
+    { "name": "TCPForce", "type": "double" },
+    { "name": "AnomalyState", "type": "int" }
+  ]
+}
