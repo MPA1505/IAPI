@@ -7,6 +7,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Main {
 
@@ -17,16 +19,25 @@ public class Main {
         final String DEFAULT_INPUT_FOLDER = "./src/main/resources/datasets_20hz_1_robot_1_minute";
         final String DEFAULT_OUTPUT_FOLDER = "./src/main/resources/merged_datasets";
         final int DEFAULT_MAX_FILE_SIZE_MB = 300;
+        final String DEFAULT_BOOTSTRAP_SERVER = "pkc-lq8v7.eu-central-1.aws.confluent.cloud:9092";
+        final String DEFAULT_TOPIC = "kafka-test";
 
         // Parse command-line arguments
-        String inputFolder = (args.length > 0) ? args[0] : DEFAULT_INPUT_FOLDER;
-        String outputFolder = (args.length > 1) ? args[1] : DEFAULT_OUTPUT_FOLDER;
-        int maxFileSizeMB = parseMaxFileSize(args, DEFAULT_MAX_FILE_SIZE_MB);
+        Map<String, String> argMap = parseArguments(args);
 
-        System.out.printf("Starting the data merging and conversion process.%n");
+        String inputFolder = argMap.getOrDefault("input", DEFAULT_INPUT_FOLDER);
+        String outputFolder = argMap.getOrDefault("output", DEFAULT_OUTPUT_FOLDER);
+        String bootstrapServer = argMap.getOrDefault("server", DEFAULT_BOOTSTRAP_SERVER);
+        String topic = argMap.getOrDefault("topic", DEFAULT_TOPIC);
+        int maxFileSizeMB = parseMaxFileSize(argMap.getOrDefault("size", String.valueOf(DEFAULT_MAX_FILE_SIZE_MB)));
+
+        // Print configuration
+        System.out.println("Starting the data merging and conversion process.");
         System.out.printf("Input folder: %s%n", inputFolder);
         System.out.printf("Output folder: %s%n", outputFolder);
         System.out.printf("Max file size: %d MB%n", maxFileSizeMB);
+        System.out.printf("Kafka Bootstrap Server: %s%n", bootstrapServer);
+        System.out.printf("Kafka Topic: %s%n", topic);
 
         // Initialize Hadoop configuration
         Configuration conf = HadoopConfig.getHadoopConfiguration();
@@ -50,10 +61,10 @@ public class Main {
 
             // Continuously monitor and process files
             while (isRunning) {
-                //merger.mergeFilesConcurrently(); // Process files
+                merger.mergeFilesConcurrently(); // Process files
                 System.out.println("Waiting for new files...");
                 try {
-                    sendFiles(outputFolder);
+                    sendFiles(outputFolder, bootstrapServer, topic);
                     Thread.sleep(5000); // Pause before checking again
                 } catch (InterruptedException e) {
                     System.out.println("Thread interrupted. Exiting...");
@@ -62,36 +73,45 @@ public class Main {
             }
 
         } catch (Exception e) {
-            System.err.println("Failed to initialize or execute FileMerger: " + e.getMessage());
+            System.err.println("Failed to initialize or execute: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
     /**
-     * Parses the max file size from command-line arguments.
+     * Parses command-line arguments into a key-value map.
+     * Example input: --inputFolder=/path/to/input --outputFolder=/path/to/output --maxFileSizeMB=200
      */
-    private static int parseMaxFileSize(String[] args, int defaultMaxFileSize) {
-        if (args.length > 2) {
-            try {
-                int maxFileSizeMB = Integer.parseInt(args[2]);
-                if (maxFileSizeMB <= 0) {
-                    throw new IllegalArgumentException("Max file size must be greater than 0.");
+    private static Map<String, String> parseArguments(String[] args) {
+        Map<String, String> argMap = new HashMap<>();
+        for (String arg : args) {
+            if (arg.startsWith("--") && arg.contains("=")) {
+                String[] split = arg.substring(2).split("=", 2);
+                if (split.length == 2) {
+                    argMap.put(split[0], split[1]);
                 }
-                return maxFileSizeMB;
-            } catch (NumberFormatException e) {
-                System.err.printf("Invalid max file size specified: %s. Using default max file size: %d MB%n", args[2], defaultMaxFileSize);
-            } catch (IllegalArgumentException e) {
-                System.err.printf("%s Using default max file size: %d MB%n", e.getMessage(), defaultMaxFileSize);
             }
         }
-        return defaultMaxFileSize;
+        return argMap;
     }
 
-    public static void sendFiles(String outputPath) {
-        // Kafka configuration
-        String bootstrapServers = "pkc-lq8v7.eu-central-1.aws.confluent.cloud:9092"; // Replace with actual Kafka server
-        String topic = "kafka-test";
+    /**
+     * Parses the max file size from a string.
+     */
+    private static int parseMaxFileSize(String value) {
+        try {
+            int maxFileSizeMB = Integer.parseInt(value);
+            if (maxFileSizeMB <= 0) {
+                throw new IllegalArgumentException("Max file size must be greater than 0.");
+            }
+            return maxFileSizeMB;
+        } catch (NumberFormatException e) {
+            System.err.printf("Invalid max file size specified: %s. Using default value.%n", value);
+            return 300; // Default max file size
+        }
+    }
 
+    public static void sendFiles(String outputPath, String bootstrapServers, String topic) {
         // Initialize Kafka producer
         KafkaFileProducer kafkaProducer = new KafkaFileProducer(bootstrapServers, topic);
 
