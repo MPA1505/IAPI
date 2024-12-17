@@ -116,7 +116,7 @@ public class Main {
         KafkaFileProducer kafkaProducer = new KafkaFileProducer(bootstrapServers, topic);
 
         // Process files in a folder and send to Kafka
-        File outputFolder = new File(outputPath);
+        File outputFolder = new File(outputPath).getParentFile();
 
         if (!outputFolder.exists() || !outputFolder.isDirectory()) {
             System.err.printf("Output path '%s' does not exist or is not a directory.%n", outputPath);
