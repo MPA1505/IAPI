@@ -67,13 +67,34 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Verify iptables
+# Verify iptables rules
 echo "Verifying iptables rules..."
 sudo iptables -t nat -L PREROUTING -n -v | grep "$KAFKA_PORT_EXTERNAL"
 
-# Cleanup iptables rules (Optional: Uncomment if you want to clean up after script execution)
+# Start port-forwarding as a fallback (for local testing)
+echo "Starting port-forwarding as a fallback..."
+minikube kubectl -- port-forward svc/kafka $KAFKA_PORT_EXTERNAL:$KAFKA_PORT_INTERNAL -n "$KAFKA_NAMESPACE" &
+PORT_FORWARD_PID=$!
+
+# Wait for port-forward to establish
+sleep 5
+if ! ps -p $PORT_FORWARD_PID > /dev/null; then
+    echo "Port-forwarding failed. Continuing with iptables setup only."
+else
+    echo "Port-forwarding established on $BOOTSTRAP_SERVER:$KAFKA_PORT_EXTERNAL."
+fi
+
+# Run the Java project
+echo "Starting Java project..."
+java -Xms1g -Xmx2g -jar "$JAR_FILE" --input="$INPUT_DIR" --output="$OUTPUT_DIR" --size="$FILE_SIZE_MB" --server="$BOOTSTRAP_SERVER:$KAFKA_PORT_EXTERNAL" --topic="$TOPIC"
+
+# Cleanup iptables rules (Optional)
 # echo "Cleaning up iptables rules..."
 # sudo iptables -t nat -D PREROUTING -p tcp --dport $KAFKA_PORT_EXTERNAL -j DNAT --to-destination "$MINIKUBE_IP:$KAFKA_PORT_INTERNAL"
 # sudo iptables -t nat -D POSTROUTING -p tcp -d "$MINIKUBE_IP" --dport $KAFKA_PORT_INTERNAL -j MASQUERADE
+
+# Cleanup port-forward
+echo "Stopping port-forwarding..."
+kill $PORT_FORWARD_PID
 
 echo "Setup script completed."
