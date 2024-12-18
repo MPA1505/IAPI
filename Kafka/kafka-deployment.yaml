@@ -24,7 +24,7 @@ spec:
         - name: ALLOW_PLAINTEXT_LISTENER
           value: "yes"
         - name: KAFKA_ADVERTISED_LISTENERS
-          value: PLAINTEXT://kafka:9092,PLAINTEXT_EXTERNAL://129.151.195.201:9093
+          value: PLAINTEXT://kafka:9092,PLAINTEXT_EXTERNAL://129.151.195.201:31093
         - name: KAFKA_LISTENERS
           value: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_EXTERNAL://0.0.0.0:9093
         - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
@@ -54,7 +54,7 @@ metadata:
   name: kafka
   namespace: kafka
 spec:
-  type: LoadBalancer
+  type: NodePort
   ports:
   - name: internal
     port: 9092
@@ -62,5 +62,6 @@ spec:
   - name: external
     port: 9093
     targetPort: 9093
+    nodePort: 31093
   selector:
     app: kafka

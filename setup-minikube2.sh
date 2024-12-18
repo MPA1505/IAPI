@@ -10,7 +10,7 @@ FILE_SIZE_MB="300"
 JAR_FILE="unified_project-1.0-SNAPSHOT_fixed.jar"
 BOOTSTRAP_SERVER="129.151.195.201"  # Public IP of the Oracle VM
 KAFKA_PORT_INTERNAL=9093
-KAFKA_PORT_EXTERNAL=9093  # Port to expose on the public IP
+KAFKA_PORT_EXTERNAL=31093  # Updated to match the nodePort
 
 echo "Starting setup script..."
 
@@ -57,21 +57,26 @@ if [ -z "$MINIKUBE_IP" ]; then
 fi
 echo "Minikube IP: $MINIKUBE_IP"
 
-# Start minikube tunnel in the background
-echo "Starting minikube tunnel..."
-minikube tunnel --profile "$MINIKUBE_PROFILE" &
-TUNNEL_PID=$!
+# Remove minikube tunnel
+# echo "Starting minikube tunnel..."
+# minikube tunnel --profile "$MINIKUBE_PROFILE" &
+# TUNNEL_PID=$!
 
 # Update BOOTSTRAP_SERVER to use the public IP
-BOOTSTRAP_SERVER="129.151.195.201"
-echo "Kafka is exposed at $BOOTSTRAP_SERVER:$KAFKA_PORT_EXTERNAL"
+BOOTSTRAP_SERVER="129.151.195.201:$KAFKA_PORT_EXTERNAL"
+echo "Kafka is exposed at $BOOTSTRAP_SERVER"
 
 # Run the Java project
 echo "Starting Java project..."
-java -Xms1g -Xmx2g -jar "$JAR_FILE" --input="$INPUT_DIR" --output="$OUTPUT_DIR" --size="$FILE_SIZE_MB" --server="$BOOTSTRAP_SERVER:$KAFKA_PORT_EXTERNAL" --topic="$TOPIC"
+java -Xms1g -Xmx2g -jar "$JAR_FILE" \
+  --input="$INPUT_DIR" \
+  --output="$OUTPUT_DIR" \
+  --size="$FILE_SIZE_MB" \
+  --server="$BOOTSTRAP_SERVER" \
+  --topic="$TOPIC"
 
-# Cleanup minikube tunnel
-echo "Stopping minikube tunnel..."
-kill $TUNNEL_PID
+# Remove minikube tunnel cleanup
+# echo "Stopping minikube tunnel..."
+# kill $TUNNEL_PID
 
 echo "Setup script completed."
