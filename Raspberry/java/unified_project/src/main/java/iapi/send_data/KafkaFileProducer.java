@@ -24,9 +24,9 @@ public class KafkaFileProducer {
         System.out.printf("Initializing Kafka producer for topic: %s on server: %s%n", topic, bootstrapServers);
 
         // Test connection to Kafka broker
-        if (!testBrokerConnection(bootstrapServers)) {
-            throw new KafkaException("Failed to connect to Kafka broker at: " + bootstrapServers);
-        }
+        //if (!testBrokerConnection(bootstrapServers)) {
+        //    throw new KafkaException("Failed to connect to Kafka broker at: " + bootstrapServers);
+        //}
 
         // Kafka producer properties
         Properties props = new Properties();
