@@ -26,6 +26,7 @@ public class KafkaFileProducer {
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         props.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, 200000000);
+        props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 200000000);
 
         this.producer = new KafkaProducer<>(props);
         System.out.println("Kafka producer initialized successfully.");
