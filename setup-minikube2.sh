@@ -8,9 +8,9 @@ INPUT_DIR="./datasets/datasets_20hz_1_robot_1_minute"
 OUTPUT_DIR="./datasets/merged_datasets/merged_dataset.parquet"
 FILE_SIZE_MB="300"
 JAR_FILE="unified_project-1.0-SNAPSHOT_fixed.jar"
-BOOTSTRAP_SERVER="129.151.195.201"
-TOPIC="test-topic3"
-EXTERNAL_PORT=9093  # Default port
+BOOTSTRAP_SERVER="129.151.195.201"  # Public IP of the Oracle VM
+KAFKA_PORT_INTERNAL=9093
+KAFKA_PORT_EXTERNAL=9093  # Port to expose on the public IP
 
 echo "Starting setup script..."
 
@@ -49,29 +49,31 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Check if the external port is already in use
-echo "Checking if port $EXTERNAL_PORT is available..."
-if lsof -i :$EXTERNAL_PORT >/dev/null; then
-    echo "Port $EXTERNAL_PORT is already in use. Looking for an alternative port..."
-    EXTERNAL_PORT=$(shuf -i 30000-40000 -n 1)
-    echo "Using alternative port $EXTERNAL_PORT."
+# Get Minikube IP
+MINIKUBE_IP=$(minikube ip --profile "$MINIKUBE_PROFILE")
+if [ -z "$MINIKUBE_IP" ]; then
+    echo "Failed to get Minikube IP. Exiting."
+    exit 1
 fi
+echo "Minikube IP: $MINIKUBE_IP"
 
-# Expose Kafka service to the public IP
-echo "Exposing Kafka service to public IP on port $EXTERNAL_PORT..."
-minikube kubectl -- port-forward svc/kafka $EXTERNAL_PORT:9093 -n "$KAFKA_NAMESPACE" &
-PORT_FORWARD_PID=$!
+# Add iptables rules to expose Kafka
+echo "Adding iptables rules to expose Kafka on public IP..."
+sudo iptables -t nat -A PREROUTING -p tcp --dport $KAFKA_PORT_EXTERNAL -j DNAT --to-destination "$MINIKUBE_IP:$KAFKA_PORT_INTERNAL"
+sudo iptables -t nat -A POSTROUTING -p tcp -d "$MINIKUBE_IP" --dport $KAFKA_PORT_INTERNAL -j MASQUERADE
 
-# Wait for port-forward to establish
-sleep 5
-if ! ps -p $PORT_FORWARD_PID > /dev/null; then
-    echo "Failed to port-forward Kafka service. Exiting."
+if [ $? -ne 0 ]; then
+    echo "Failed to set up iptables rules. Exiting."
     exit 1
 fi
 
-echo "Kafka is now accessible at $BOOTSTRAP_SERVER:$EXTERNAL_PORT."
+# Verify iptables
+echo "Verifying iptables rules..."
+sudo iptables -t nat -L PREROUTING -n -v | grep "$KAFKA_PORT_EXTERNAL"
 
-# Update Bootstrap Server with External Port
-BOOTSTRAP_SERVER="$BOOTSTRAP_SERVER:$EXTERNAL_PORT"
+# Cleanup iptables rules (Optional: Uncomment if you want to clean up after script execution)
+# echo "Cleaning up iptables rules..."
+# sudo iptables -t nat -D PREROUTING -p tcp --dport $KAFKA_PORT_EXTERNAL -j DNAT --to-destination "$MINIKUBE_IP:$KAFKA_PORT_INTERNAL"
+# sudo iptables -t nat -D POSTROUTING -p tcp -d "$MINIKUBE_IP" --dport $KAFKA_PORT_INTERNAL -j MASQUERADE
 
 echo "Setup script completed."
