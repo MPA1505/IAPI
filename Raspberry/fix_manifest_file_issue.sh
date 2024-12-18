@@ -16,4 +16,5 @@ rm -f META-INF/*.SF META-INF/*.RSA META-INF/*.DSA
 jar cfvm "../$FIXED_JAR" META-INF/MANIFEST.MF .
 
 # Optional: Cleanup the temporary directory
-rm -r "./tmp"
+cd ".."
+rm -r ".\tmp"

@@ -1,6 +1,9 @@
 package iapi.send_data;
 
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.io.File;
@@ -20,6 +23,11 @@ public class KafkaFileProducer {
 
         System.out.printf("Initializing Kafka producer for topic: %s on server: %s%n", topic, bootstrapServers);
 
+        // Test connection to Kafka broker
+        if (!testBrokerConnection(bootstrapServers)) {
+            throw new KafkaException("Failed to connect to Kafka broker at: " + bootstrapServers);
+        }
+
         // Kafka producer properties
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
@@ -33,18 +41,43 @@ public class KafkaFileProducer {
     }
 
     /**
-     * Sends the content of a file to the Kafka topic.
-     * @param filePath Path of the file to send.
+     * Tests the connection to the Kafka broker by attempting to fetch the cluster ID.
+     *
+     * @param bootstrapServers Kafka bootstrap servers.
+     * @return true if the connection test is successful, false otherwise.
      */
-    public void sendFile(Path filePath) {
+    private boolean testBrokerConnection(String bootstrapServers) {
+        System.out.println("Testing connection to Kafka broker...");
+        Properties adminProps = new Properties();
+        adminProps.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+
+        try (AdminClient adminClient = AdminClient.create(adminProps)) {
+            String clusterId = adminClient.describeCluster().clusterId().get();
+            System.out.printf("Successfully connected to Kafka broker. Cluster ID: %s%n", clusterId);
+            return true;
+        } catch (Exception e) {
+            System.err.printf("Failed to connect to Kafka broker at '%s'. Error: %s%n", bootstrapServers, e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * Sends the content of a file to the Kafka topic.
+     *
+     * @param filePath Path of the file to send.
+     * @return true if the file was sent successfully, false otherwise.
+     */
+    public boolean sendFile(Path filePath) {
         File file = filePath.toFile();
 
         if (file.length() == 0) {
             System.err.printf("Skipping empty file: %s%n", file.getName());
-            return;
+            return false;
         }
 
-        try {            // Read binary file content
+        try {
+            // Read binary file content
             byte[] content = Files.readAllBytes(filePath);
 
             // Encode binary content to Base64
@@ -59,19 +92,17 @@ public class KafkaFileProducer {
             producer.send(record, (metadata, exception) -> {
                 if (exception != null) {
                     System.err.printf("Error sending file '%s' to Kafka: %s%n", file.getName(), exception.getMessage());
-                } else {
-                    System.out.printf("File '%s' sent to Kafka successfully. Topic: %s, Partition: %d, Offset: %d%n",
-                            file.getName(), metadata.topic(), metadata.partition(), metadata.offset());
                 }
-            });
+            }).get(); // Ensures blocking until the send operation completes
+            return true;
         } catch (IOException e) {
             System.err.printf("Error reading file '%s': %s%n", file.getName(), e.getMessage());
         } catch (Exception e) {
             System.err.printf("Unexpected error while sending file '%s': %s%n", file.getName(), e.getMessage());
             e.printStackTrace();
         }
+        return false;
     }
-
 
     /**
      * Closes the Kafka producer.

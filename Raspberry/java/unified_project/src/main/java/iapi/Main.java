@@ -4,7 +4,6 @@ import iapi.convert_data.HadoopConfig;
 import iapi.merge_data.FileMerger;
 import iapi.send_data.KafkaFileProducer;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
 
 import java.io.File;
 import java.util.HashMap;
@@ -112,10 +111,10 @@ public class Main {
     }
 
     public static void sendFiles(String outputPath, String bootstrapServers, String topic) {
-        // Initialize Kafka producer
+        System.out.println("Initializing KafkaFileProducer...");
         KafkaFileProducer kafkaProducer = new KafkaFileProducer(bootstrapServers, topic);
 
-        // Process files in a folder and send to Kafka
+        System.out.printf("Scanning folder: %s for .parquet files...%n", outputPath);
         File outputFolder = new File(outputPath).getParentFile();
 
         if (!outputFolder.exists() || !outputFolder.isDirectory()) {
@@ -123,30 +122,26 @@ public class Main {
             return;
         }
 
-        System.out.printf("Scanning folder: %s for .parquet files...%n", outputPath);
         File[] files = outputFolder.listFiles((dir, name) -> name.endsWith(".parquet"));
-
         if (files == null || files.length == 0) {
             System.out.println("No .parquet files found to process.");
             return;
         }
 
         System.out.printf("Found %d .parquet file(s) to send.%n", files.length);
-
         for (File file : files) {
             System.out.printf("Preparing to send file: %s (size: %d bytes)%n", file.getName(), file.length());
-            try {
-                kafkaProducer.sendFile(file.toPath()); // Send each file to Kafka
+            boolean isSent = kafkaProducer.sendFile(file.toPath());
+            if (isSent) {
                 System.out.printf("Successfully sent file: %s%n", file.getName());
-            } catch (Exception e) {
-                System.err.printf("Error sending file %s: %s%n", file.getName(), e.getMessage());
-                e.printStackTrace();
+            } else {
+                System.err.printf("Failed to send file: %s%n", file.getName());
             }
         }
 
-        // Close Kafka producer
         kafkaProducer.close();
-        System.out.println("Kafka producer closed. All files processed.");
+        System.out.println("All files processed. Kafka producer closed.");
     }
+
 
 }
